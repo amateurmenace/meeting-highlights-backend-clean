@@ -1,47 +1,36 @@
-const { spawn } = require('child_process');
-const path = require('path');
-
-const processVideo = (req, res) => {
-  if (!req.file) {
-    console.error("❌ No file received");
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  const videoPath = req.file.path;
-  console.log("📥 Received file:", videoPath);
-
-  const scriptPath = path.join(__dirname, '../python/analyze.py');
-  const filePath = req.file.path;
-const python = spawn('/Users/amateurmenace/Documents/meeting-highlights-app/backend/python/venv/bin/python', ['python/analyze.py', filePath]);
-  let data = '';
-  python.stdout.on('data', (chunk) => (data += chunk.toString()));
-  python.stderr.on('data', (err) =>
-    console.error('🐍 Python stderr:', err.toString())
-  );
-
-  python.on('close', (code) => {
-    console.log("🐍 Python script finished with code", code);
-    try {
-      const result = JSON.parse(data);
-      res.json(result);
-    } catch (err) {
-      console.error("❌ JSON parsing error:", data);
-      res.status(500).json({ error: 'Failed to analyze video' });
-    }
-  });
-};
 const fs = require("fs");
+const { exec } = require("child_process");
 const path = require("path");
 
-function createVTT(highlights, outputPath) {
-  const vttLines = ["WEBVTT\n"];
-  highlights.forEach((item, i) => {
-    vttLines.push(`${i + 1}`);
-    vttLines.push(`${item.start} --> ${item.end}`);
-    vttLines.push(item.quote);
-    vttLines.push(""); // blank line
-  });
+exports.processVideo = async (req, res) => {
+  try {
+    console.log("Received file:", req.file?.path);
+    const filePath = req.file.path;
 
-  fs.writeFileSync(outputPath, vttLines.join("\n"), "utf8");
-}
-module.exports = { processVideo };
+    exec(`python3 python/analyze.py "${filePath}"`, (error, stdout, stderr) => {
+      if (error) {
+        console.error("❌ Error executing Python script:", error);
+        return res.status(500).json({ error: "Failed to process video" });
+      }
+
+      console.log("🐍 Python stderr:", stderr);
+      console.log("🐍 Python stdout:", stdout);
+
+      try {
+        const result = JSON.parse(stdout);
+        if (result?.highlights?.length > 0) {
+          const latest = result.highlights[result.highlights.length - 1];
+          const fileName = latest.file?.split("/").pop();
+          result.downloadLink = `/output/${fileName}`;
+        }
+        res.json(result);
+      } catch (parseError) {
+        console.error("❌ JSON parsing error:", parseError);
+        res.status(500).json({ error: "Failed to parse output" });
+      }
+    });
+  } catch (err) {
+    console.error("Unexpected server error:", err);
+    res.status(500).json({ error: "Unexpected server error" });
+  }
+};
