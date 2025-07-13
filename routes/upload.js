@@ -1,45 +1,36 @@
 const express = require('express');
+const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const { PythonShell } = require('python-shell');
-const fs = require('fs');
-
-const router = express.Router();
 
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
+  destination: (req, file, cb) => {
     cb(null, 'uploads/');
   },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now();
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+  filename: (req, file, cb) => {
+    const filename = `${Date.now()}${path.extname(file.originalname)}`;
+    cb(null, filename);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 router.post('/upload', upload.single('video'), (req, res) => {
-  const videoPath = req.file.path;
-  console.log(`Received file: ${videoPath}`);
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
-  const options = {
-    args: [videoPath],
-    pythonOptions: ['-u'],
-  };
+  const inputPath = req.file.path;
 
-  PythonShell.run('python/analyze.py', options, function (err, results) {
+  PythonShell.run('python/analyze.py', { args: [inputPath] }, (err, results) => {
     if (err) {
-      console.error('❌ Error executing Python script:', err);
+      console.error('❌ Python error:', err);
       return res.status(500).json({ error: 'Failed to process video' });
     }
 
-    console.log('✅ Python script results:', results);
-    res.json({ success: true, output: results });
+    res.status(200).json({ success: true, results });
   });
-});
-
-router.get('/test', (req, res) => {
-  res.send('Upload route is working!');
 });
 
 module.exports = router;
