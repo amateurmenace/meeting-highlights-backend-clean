@@ -1,29 +1,30 @@
-# Use Node.js base image
-FROM node:18
+# Use an official Node.js image with Python preinstalled
+FROM node:18-bullseye
 
-# Install Python, pip, and FFmpeg
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip ffmpeg && \
-    apt-get clean
+# Install system dependencies (Python, pip, ffmpeg)
+RUN apt-get update && apt-get install -y \
+  python3 \
+  python3-pip \
+  ffmpeg
 
-# Create app directory
+# Set working directory
 WORKDIR /app
 
-# Copy package files and install backend dependencies
+# Copy package files and install Node.js dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy all files
+# Copy backend source code
 COPY . .
 
-# Install Python dependencies
-RUN pip3 install --no-cache-dir -r python/requirements.txt
+# Install Python dependencies including Whisper
+RUN pip3 install --no-cache-dir git+https://github.com/openai/whisper.git
 
-# Create uploads and output folders
-RUN mkdir -p uploads output
+# Make sure uploads folder exists
+RUN mkdir -p uploads
 
-# Expose server port
+# Expose port 8080 for Railway
 EXPOSE 8080
 
 # Start server
-CMD ["node", "server.js"]
+CMD ["npm", "start"]
