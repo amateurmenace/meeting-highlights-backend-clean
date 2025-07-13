@@ -1,25 +1,24 @@
-# Use Node 18 on Debian Linux
-FROM node:18-bullseye
+FROM node:18
 
-# Install Python 3 and ffmpeg
-RUN apt-get update && \
-    apt-get install -y python3 python3-pip ffmpeg && \
-    apt-get clean
+# Install Python and FFmpeg
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    ffmpeg \
+    && apt-get clean
 
-# Set working directory inside container
+# Set working directory
 WORKDIR /app
 
-# Copy everything into the container
-COPY . .
-
-# Install Node dependencies
+# Copy Node.js dependencies and install
+COPY package*.json ./
 RUN npm install
+
+# Copy everything else (including Python scripts and requirements)
+COPY . .
 
 # Install Python dependencies
 RUN pip3 install -r python/requirements.txt
 
-# Expose port for Railway
-EXPOSE 8080
-
-# Start your backend
+# Start the Node server
 CMD ["node", "server.js"]
