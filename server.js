@@ -1,25 +1,26 @@
-const express = require("express");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const uploadRoute = require("./routes/upload");
+const express = require('express');
+const fileUpload = require('express-fileupload');
+const uploadRoute = require('./routes/upload');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Ensure uploads folder exists at runtime
-const uploadDir = path.join(__dirname, "uploads");
+// Middleware
+app.use(fileUpload());
+app.use(express.json());
+
+// Ensure uploads directory exists
+const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-app.use(express.json());
-app.use("/upload", uploadRoute);
+// Routes
+app.use('/upload', uploadRoute);
 
-app.get("/", (req, res) => {
-  res.send("Backend is running.");
-});
-
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
