@@ -18,7 +18,6 @@ RUN npm install
 COPY . .
 
 # Install Python dependencies
-RUN pip3 install -r python/requirements.txt
-
+RUN pip install --break-system-packages -r requirements.txt
 # Start the Node server
 CMD ["node", "server.js"]
