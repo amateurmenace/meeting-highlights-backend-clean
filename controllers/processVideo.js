@@ -1,31 +1,46 @@
-const { PythonShell } = require("python-shell");
+// controllers/processVideo.js
 
-function processVideo(req, res) {
+const { spawn } = require('child_process');
+const path  = require('path');
+const fs    = require('fs');
+
+/**
+ * POST /upload handler
+ * Expects req.file (set by multer)
+ * Runs python/analyze.py <filePath>
+ * Returns JSON { summary, highlights, ... }
+ */
+const processVideo = (req, res) => {
   if (!req.file) {
-    console.log("❌ No file uploaded.");
-    return res.status(400).json({ error: "No video uploaded" });
+    return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const filePath = req.file.path;
-  console.log("📥 Received file:", filePath);
+  const filePath = req.file.path;           // e.g., uploads/12345.mp4
+  console.log('📥 Received file:', filePath);
 
-  const options = {
-    mode: "text",
-    pythonOptions: ["-u"],
-    scriptPath: "./python",
-    args: [filePath],
-  };
+  // Call python3 that exists in the Docker image
+  const python = spawn('python3', ['python/analyze.py', filePath]);
 
-  PythonShell.run("analyze.py", options)
-    .then((results) => {
-      console.log("✅ Python script output:", results);
+  let stdout = '';
+  let stderr = '';
 
-      const summaryJson = results?.[0];
-      const parsed = JSON.parse(summaryJson);
-      res.json(parsed);
-    })
-    .catch((err) => {
-      console.error("🐍 Python script error:", err);
-      res.status(500).json({ error: "Failed to process video" });
-    });
-}
+  python.stdout.on('data', chunk => (stdout += chunk.toString()));
+  python.stderr.on('data',  err   => (stderr += err.toString()));
+
+  python.on('close', code => {
+    if (code !== 0) {
+      console.error('🐍 Python error:\n', stderr);
+      return res.status(500).json({ error: 'Failed to process video' });
+    }
+
+    try {
+      const result = JSON.parse(stdout);
+      return res.json(result);
+    } catch (e) {
+      console.error('❌ JSON parse error:', e);
+      return res.status(500).json({ error: 'Invalid JSON from analyzer' });
+    }
+  });
+};
+
+module.exports = { processVideo };

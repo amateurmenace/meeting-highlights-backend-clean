@@ -1,23 +1,24 @@
-// backend/routes/upload.js
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
+// routes/upload.js
+
+const express  = require('express');
+const multer   = require('multer');
+const path     = require('path');
 const { processVideo } = require('../controllers/processVideo');
 
-const router = express.Router();
+const router  = express.Router();
 
-// Set up Multer to save uploaded files to /uploads
+/** Multer storage: uploads/<timestamp>.ext */
 const storage = multer.diskStorage({
   destination: 'uploads/',
-  filename: (req, file, cb) => {
-    const uniqueName = Date.now() + path.extname(file.originalname);
-    cb(null, uniqueName);
+  filename: (_req, file, cb) => {
+    const unique = Date.now() + path.extname(file.originalname);
+    cb(null, unique);
   }
 });
 
 const upload = multer({ storage });
 
-// POST route to accept uploaded video
-router.post('/', upload.single('video'), processVideo);
+/** POST /upload  — single file field named "video" */
+router.post('/upload', upload.single('video'), processVideo);
 
 module.exports = router;
