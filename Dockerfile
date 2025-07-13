@@ -1,23 +1,29 @@
+# Use Node.js base image
 FROM node:18
 
-# Install Python and FFmpeg
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    && apt-get clean
+# Install Python, pip, and FFmpeg
+RUN apt-get update && \
+    apt-get install -y python3 python3-pip ffmpeg && \
+    apt-get clean
 
-# Set working directory
+# Create app directory
 WORKDIR /app
 
-# Copy Node.js dependencies and install
+# Copy package files and install backend dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy everything else (including Python scripts and requirements)
+# Copy all files
 COPY . .
 
 # Install Python dependencies
-RUN pip install --break-system-packages -r requirements.txt
-# Start the Node server
+RUN pip3 install --no-cache-dir -r python/requirements.txt
+
+# Create uploads and output folders
+RUN mkdir -p uploads output
+
+# Expose server port
+EXPOSE 8080
+
+# Start server
 CMD ["node", "server.js"]
